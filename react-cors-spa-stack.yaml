@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 
 Description: >
   Creates the infrastructure to host and expose a Single Page Application:
@@ -12,7 +12,7 @@ Parameters: {}
 Resources:
   # Our simple REST API
   SimpleAPI:
-    Type: 'AWS::ApiGateway::RestApi'
+    Type: "AWS::ApiGateway::RestApi"
     Properties:
       Description: A simple REST API
       Name: SimpleAPI
@@ -22,9 +22,9 @@ Resources:
 
   # The Resource (/hello) of our API
   SimpleAPIResource:
-    Type: 'AWS::ApiGateway::Resource'
+    Type: "AWS::ApiGateway::Resource"
     Properties:
-      ParentId: !GetAtt 
+      ParentId: !GetAtt
         - SimpleAPI
         - RootResourceId
       PathPart: hello
@@ -32,7 +32,7 @@ Resources:
 
   # The method to call (GET) for our API
   HelloAPIGETMethod:
-    Type: 'AWS::ApiGateway::Method'
+    Type: "AWS::ApiGateway::Method"
     #checkov:skip=CKV_AWS_59: "This API does not expose backend service"
     DependsOn:
       - CFDistributionSPA
@@ -49,9 +49,9 @@ Resources:
           - StatusCode: 200
             SelectionPattern: 200
             ResponseParameters:
-              method.response.header.Access-Control-Allow-Origin: !Sub  '''https://${CFDistributionSPA.DomainName}'''
+              method.response.header.Access-Control-Allow-Origin: !Sub "'https://${CFDistributionSPA.DomainName}'"
             ResponseTemplates:
-              application/json: "{\"message\": \"Hello World!\"}"
+              application/json: '{"message": "Hello World!"}'
       MethodResponses:
         - StatusCode: 200
           ResponseParameters:
@@ -63,7 +63,7 @@ Resources:
 
   # A deployment resource for deploying our API
   Deployment:
-    Type: 'AWS::ApiGateway::Deployment'
+    Type: "AWS::ApiGateway::Deployment"
     DependsOn:
       - HelloAPIGETMethod
     Properties:
@@ -72,14 +72,14 @@ Resources:
 
   # The Amazon S3 bucket into which our Single Page Application build files must be deployed
   S3Bucket:
-    Type: 'AWS::S3::Bucket'
+    Type: "AWS::S3::Bucket"
     Properties:
-      BucketName: !Sub 'react-cors-spa-${SimpleAPI}'
+      BucketName: !Sub "react-cors-spa-${SimpleAPI}"
       PublicAccessBlockConfiguration:
-        BlockPublicAcls : true
-        BlockPublicPolicy : true
-        IgnorePublicAcls : true
-        RestrictPublicBuckets : true
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
       LoggingConfiguration:
         DestinationBucketName: !Ref LoggingBucket
         LogFilePrefix: s3-access-logs
@@ -87,12 +87,12 @@ Resources:
         Status: Enabled
       BucketEncryption:
         ServerSideEncryptionConfiguration:
-        - ServerSideEncryptionByDefault:
-            SSEAlgorithm: 'AES256'
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
 
   # The Amazon S3 bucket policy for securing the bucket hosting the application
   BucketPolicy:
-    Type: 'AWS::S3::BucketPolicy'
+    Type: "AWS::S3::BucketPolicy"
     Properties:
       PolicyDocument:
         Id: MyPolicy
@@ -106,11 +106,11 @@ Resources:
             Condition:
               StringEquals:
                 AWS:SourceArn: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${CFDistributionSPA}
-            Action: 's3:GetObject*'
+            Action: "s3:GetObject*"
       Bucket: !Ref S3Bucket
 
   BucketPolicyForLogging:
-    Type: 'AWS::S3::BucketPolicy'
+    Type: "AWS::S3::BucketPolicy"
     Properties:
       PolicyDocument:
         Id: S3LoggingPolicy
@@ -124,27 +124,27 @@ Resources:
             Condition:
               StringEquals:
                 AWS:SourceAccount: !Sub ${AWS::AccountId}
-            Action: 's3:PutObject'
+            Action: "s3:PutObject"
       Bucket: !Ref LoggingBucket
 
   # The Amazon S3 bucket into which access logs from S3 (for the application) and CloudFront will be put
   LoggingBucket:
     #checkov:skip=CKV_AWS_18: "This bucket is private and only for storing logs"
-    Type: 'AWS::S3::Bucket'
+    Type: "AWS::S3::Bucket"
     Properties:
-      BucketName: !Sub 'react-cors-spa-${SimpleAPI}-logs'
+      BucketName: !Sub "react-cors-spa-${SimpleAPI}-logs"
       PublicAccessBlockConfiguration:
-        BlockPublicAcls : true
-        BlockPublicPolicy : true
-        IgnorePublicAcls : true
-        RestrictPublicBuckets : true
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
       AccessControl: LogDeliveryWrite
       VersioningConfiguration:
         Status: Enabled
       BucketEncryption:
         ServerSideEncryptionConfiguration:
-        - ServerSideEncryptionByDefault:
-            SSEAlgorithm: 'AES256'
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
       OwnershipControls:
         Rules:
           - ObjectOwnership: BucketOwnerPreferred
@@ -154,22 +154,22 @@ Resources:
   # Policies can be found here: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-response-headers-policies.html
   CFDistributionSPA:
     #checkov:skip=CKV_AWS_68: "For demo purposes and to reduce cost, no WAF is configured"
-    Type: 'AWS::CloudFront::Distribution'
+    Type: "AWS::CloudFront::Distribution"
     Properties:
       DistributionConfig:
         Origins:
-        - DomainName: !GetAtt S3Bucket.RegionalDomainName
-          Id: myS3Origin
-          S3OriginConfig:
-            OriginAccessIdentity: ""
-          OriginAccessControlId: !GetAtt CloudFrontOriginAccessControl.Id
-        Enabled: 'true'
+          - DomainName: !GetAtt S3Bucket.RegionalDomainName
+            Id: myS3Origin
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+            OriginAccessControlId: !GetAtt CloudFrontOriginAccessControl.Id
+        Enabled: "true"
         DefaultRootObject: index.html
         DefaultCacheBehavior:
           AllowedMethods:
-          - GET
-          - HEAD
-          - OPTIONS
+            - GET
+            - HEAD
+            - OPTIONS
           TargetOriginId: myS3Origin
           CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # CachingOptimized
           OriginRequestPolicyId: 88a5eaf4-2fd4-4709-b370-b4c650ea3fcf # CORS-S3Origin
@@ -180,57 +180,55 @@ Resources:
             ResponseCode: 200
             ResponsePagePath: /index.html
           - ErrorCode: 501
-            ResponseCode: 501
             ErrorCachingMinTTL: 0
         PriceClass: PriceClass_All
         Logging:
           Bucket: !GetAtt LoggingBucket.RegionalDomainName
-          Prefix: 'cf-spa-access-logs'
+          Prefix: "cf-spa-access-logs"
         ViewerCertificate:
           CloudFrontDefaultCertificate: true
-          MinimumProtocolVersion: 'TLSv1.2_2021'
+          MinimumProtocolVersion: "TLSv1.2_2021"
 
   # The Amazon CloudFront distribution exposing our Simple REST API
   # Policies can be found here: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-response-headers-policies.html
   CFDistributionAPI:
     #checkov:skip=CKV_AWS_68: "For demo purposes and to reduce cost, no WAF is configured"
-    Type: 'AWS::CloudFront::Distribution'
+    Type: "AWS::CloudFront::Distribution"
     Properties:
       DistributionConfig:
         Origins:
-        - DomainName: !Sub "${SimpleAPI}.execute-api.${AWS::Region}.amazonaws.com"
-          Id: myAPIGTWOrigin
-          CustomOriginConfig:
-            OriginProtocolPolicy: https-only
-        Enabled: 'true'
+          - DomainName: !Sub "${SimpleAPI}.execute-api.${AWS::Region}.amazonaws.com"
+            Id: myAPIGTWOrigin
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+        Enabled: "true"
         DefaultCacheBehavior:
-            AllowedMethods:
+          AllowedMethods:
             - GET
             - HEAD
             - OPTIONS
-            TargetOriginId: myAPIGTWOrigin
-            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad # CachingDisabled
-            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac # AllViewerExceptHostHeader
-            ResponseHeadersPolicyId: eaab4381-ed33-4a86-88ca-d9558dc6cd63 # CORS-with-preflight-and-SecurityHeadersPolicy
-            ViewerProtocolPolicy: redirect-to-https
+          TargetOriginId: myAPIGTWOrigin
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad # CachingDisabled
+          OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac # AllViewerExceptHostHeader
+          ResponseHeadersPolicyId: eaab4381-ed33-4a86-88ca-d9558dc6cd63 # CORS-with-preflight-and-SecurityHeadersPolicy
+          ViewerProtocolPolicy: redirect-to-https
         CustomErrorResponses:
           - ErrorCode: 501
-            ResponseCode: 501
             ErrorCachingMinTTL: 0
         PriceClass: PriceClass_All
         Logging:
           Bucket: !GetAtt LoggingBucket.RegionalDomainName
-          Prefix: 'cf-api-access-logs'
+          Prefix: "cf-api-access-logs"
         ViewerCertificate:
           CloudFrontDefaultCertificate: true
-          MinimumProtocolVersion: 'TLSv1.2_2021'
+          MinimumProtocolVersion: "TLSv1.2_2021"
 
   # The Amazon CloudFront origin access control
   CloudFrontOriginAccessControl:
     Type: AWS::CloudFront::OriginAccessControl
     DependsOn:
       - S3Bucket
-    Properties: 
+    Properties:
       OriginAccessControlConfig:
         Description: Default Origin Access Control
         Name: !Ref AWS::StackName
